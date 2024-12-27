@@ -63,7 +63,8 @@ private:
 #pragma region ClimbCore
 	bool TraceClimbableSurfaces();
 
-	FHitResult TraceFromEyeHeight(float TraceDistance, float TraceStartOffset = 0.f);
+	FHitResult TraceFromEyeHeight(float TraceDistance, float TraceStartOffset = 0.f, bool bShowDebugShape = false, bool bDrawPersistantShape = false);
+	FHitResult TraceFromHorizontal(float TraceDistance, float TraceStartOffset = 0.f, bool bShowDebugShape = false, bool bDrawPersistantShape = false);
 
 	bool CanStartClimbing();
 
@@ -97,6 +98,22 @@ private:
 	void OnClimbMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	void SetMotionWarpTarget(const FName& InWarpTargetName, const FVector& InTargetPosition);
+
+	void HandleHopUp();
+
+	bool CheckCanHopUp(FVector& OutHopUpTargetPosition);
+
+	void HandleHopDown();
+
+	bool CheckCanHopDown(FVector& OutHopDownTargetPosition);
+
+	void HandleHopRight();
+
+	bool CheckCanHopRight(FVector& OutHopRightTargetPosition);
+
+	void HandleHopLeft();
+
+	bool CheckCanHopLeft(FVector& OutHopLeftTargetPosition);
 #pragma endregion
 
 
@@ -151,10 +168,24 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement: Climbing", meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* ValutMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement: Climbing", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* HopUpMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement: Climbing", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* HopDownMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement: Climbing", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* HopRightMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Movement: Climbing", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* HopLeftMontage;
 #pragma endregion
 
 public:
 	void ToggleClimbing(bool bEnableClimb);
+
+	void RequestHopping();
 
 	bool IsClimbing() const;
 

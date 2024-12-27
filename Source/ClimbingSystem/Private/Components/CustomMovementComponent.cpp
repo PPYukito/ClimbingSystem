@@ -438,7 +438,7 @@ bool UCustomMovementComponent::CanStartVaulting(FVector& OutVaultStartPosition, 
 
 	for (int32 i = 0; i < 5; i++)
 	{
-		const FVector Start = ComponentLocation + UpVector * 100.f + ComponentForward * 100.f * (i + 1);
+		const FVector Start = ComponentLocation + UpVector * 100.f + ComponentForward * 80.f * (i + 1);
 		const FVector End = Start + DownVector * 100.f * (i + 1); 
 
 		FHitResult VaultTraceHit = DoLineTraceSingleByObject(Start, End);
@@ -487,6 +487,57 @@ void UCustomMovementComponent::OnClimbMontageEnded(UAnimMontage* Montage, bool b
 	}
 }
 
+void UCustomMovementComponent::RequestHopping()
+{
+	const FVector UnrotatedLastInputVector = UKismetMathLibrary::Quat_UnrotateVector(
+		UpdatedComponent->GetComponentQuat(),
+		GetLastInputVector()
+	);
+
+	const float DotResult = FVector::DotProduct(UnrotatedLastInputVector.GetSafeNormal(), FVector::UpVector);
+
+	//if you can calculate by input value when moving through climb, you can use that axis for calculate which direction you want to hop, but in this case, just up and down is enough.
+	/*if (DotResult > -0.5f && DotResult < 0.5f)
+	{
+		Debug::Print(TEXT("Hop right or left!"));
+
+	}
+	else if (DotResult >= 0.5f)
+	{
+		Debug::Print(TEXT("Hop up!"));
+	}
+	else if (DotResult <= -0.5f)
+	{
+		Debug::Print(TEXT("Hop down!!"));
+	}
+	else
+	{
+		Debug::Print(TEXT("Hop left!!"));
+	}*/
+
+	if (DotResult <= -0.9f)
+	{
+		HandleHopDown();
+	}
+	else if (DotResult >= 0.9f)
+	{
+		HandleHopUp();
+	}
+	else
+	{
+		const float DotHorizontalResult = FVector::DotProduct(UnrotatedLastInputVector.GetSafeNormal(), FVector::RightVector);
+
+		if (DotHorizontalResult >= 0.9f)
+		{
+			HandleHopRight();
+		}
+		else if (DotHorizontalResult <= 0.9f)
+		{
+			HandleHopLeft();
+		}
+	}
+}
+
 void UCustomMovementComponent::SetMotionWarpTarget(const FName& InWarpTargetName, const FVector& InTargetPosition)
 {
 	if (!OwningPlayerCharacter) return;
@@ -496,6 +547,102 @@ void UCustomMovementComponent::SetMotionWarpTarget(const FName& InWarpTargetName
 			InWarpTargetName,
 			InTargetPosition
 		);
+}
+
+void UCustomMovementComponent::HandleHopUp()
+{
+	FVector HopUpTargetPoint;
+	if (CheckCanHopUp(HopUpTargetPoint))
+	{
+		SetMotionWarpTarget(FName("HopUpTargetPoint"), HopUpTargetPoint);
+
+		PlayClimbMontage(HopUpMontage);
+	}
+}
+
+bool UCustomMovementComponent::CheckCanHopUp(FVector& OutHopUpTargetPosition)
+{
+	FHitResult HopUpHit = TraceFromEyeHeight(100.f, -10.f);
+	FHitResult SaftyLedgeHit = TraceFromEyeHeight(100.f, 150.f);
+
+	if (HopUpHit.bBlockingHit && SaftyLedgeHit.bBlockingHit)
+	{
+		OutHopUpTargetPosition = HopUpHit.ImpactPoint;
+		return true;
+	}
+
+	return false;
+}
+void UCustomMovementComponent::HandleHopDown()
+{
+	FVector HopDownTargetPoint;
+	if (CheckCanHopDown(HopDownTargetPoint))
+	{
+		SetMotionWarpTarget(FName("HopDownTargetPoint"), HopDownTargetPoint);
+
+		PlayClimbMontage(HopDownMontage);
+	}
+}
+
+bool UCustomMovementComponent::CheckCanHopDown(FVector& OutHopDownTargetPosition)
+{
+	FHitResult HopDownHit = TraceFromEyeHeight(100.f, -300.f, true, true);
+
+	if (HopDownHit.bBlockingHit)
+	{
+		OutHopDownTargetPosition = HopDownHit.ImpactPoint;
+		return true;
+	}
+
+	return false;
+}
+
+void UCustomMovementComponent::HandleHopRight()
+{
+	FVector HopRightTargetPoint;
+	if (CheckCanHopRight(HopRightTargetPoint))
+	{
+		SetMotionWarpTarget(FName("HopRightTargetPoint"), HopRightTargetPoint);
+
+		PlayClimbMontage(HopRightMontage);
+	}
+}
+
+bool UCustomMovementComponent::CheckCanHopRight(FVector& OutHopRightTargetPosition)
+{
+	FHitResult HopRightHit = TraceFromHorizontal(100.f, 80.f);
+
+	if (HopRightHit.bBlockingHit)
+	{
+		OutHopRightTargetPosition = HopRightHit.ImpactPoint;
+		return true;
+	}
+
+	return false;
+}
+
+void UCustomMovementComponent::HandleHopLeft()
+{
+	FVector HopLeftTargetPoint;
+	if (CheckCanHopLeft(HopLeftTargetPoint))
+	{
+		SetMotionWarpTarget(FName("HopLeftTargetPoint"), HopLeftTargetPoint);
+
+		PlayClimbMontage(HopLeftMontage);
+	}
+}
+
+bool UCustomMovementComponent::CheckCanHopLeft(FVector& OutHopLeftTargetPosition)
+{
+	FHitResult HopLeftHit = TraceFromHorizontal(100.f, -300.f, true, true);
+
+	if (HopLeftHit.bBlockingHit)
+	{
+		OutHopLeftTargetPosition = HopLeftHit.ImpactPoint;
+		return true;
+	}
+
+	return false;
 }
 #pragma endregion
 
@@ -520,7 +667,7 @@ bool UCustomMovementComponent::TraceClimbableSurfaces()
 	return !ClimbableSurfacesTracedResults.IsEmpty();
 }
 
-FHitResult UCustomMovementComponent::TraceFromEyeHeight(float TraceDistance, float TraceStartOffset)
+FHitResult UCustomMovementComponent::TraceFromEyeHeight(float TraceDistance, float TraceStartOffset, bool bShowDebugShape, bool bDrawPersistantShape)
 {
 	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
 	const FVector EyeHeightOffset = UpdatedComponent->GetUpVector() * (CharacterOwner->BaseEyeHeight + TraceStartOffset);
@@ -528,5 +675,16 @@ FHitResult UCustomMovementComponent::TraceFromEyeHeight(float TraceDistance, flo
 	const FVector Start = ComponentLocation + EyeHeightOffset;
 	const FVector End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;
 
-	return DoLineTraceSingleByObject(Start, End, true);
+	return DoLineTraceSingleByObject(Start, End, bShowDebugShape, bDrawPersistantShape);
+}
+
+FHitResult UCustomMovementComponent::TraceFromHorizontal(float TraceDistance, float TraceStartOffset, bool bShowDebugShape, bool bDrawPersistantShape)
+{
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+	const FVector HorizontalOffset = UpdatedComponent->GetRightVector() * (CharacterOwner->BaseEyeHeight + TraceStartOffset);
+
+	const FVector Start = ComponentLocation + HorizontalOffset;
+	const FVector End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;
+
+	return DoLineTraceSingleByObject(Start, End, bShowDebugShape, bDrawPersistantShape);
 }

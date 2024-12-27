@@ -50,9 +50,17 @@ private:
 
 	void OnPlayerExitClimbState();
 
+	void AddInputMappingContext(UInputMappingContext* ContextToAdd, int32 InPriority);
+
+	void RemoveMappingContext(UInputMappingContext* ContextToRemove);
+
 	/** MappingContext */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
+
+	/** MappingContext */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputMappingContext* ClimbMappingContext;
 
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
@@ -62,18 +70,23 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* MoveAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ClimbMoveAction;
+
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
 
-	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ClimbAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ClimbHopAction;
 #pragma endregion
 
 #pragma region InputCallbacks
 	/** Called for movement input */
-	void Move(const FInputActionValue& Value);
+	//void Move(const FInputActionValue& Value);
 
 	void HandleGroundMovementInput(const FInputActionValue& Value);
 	void HandleClimbMovementInput(const FInputActionValue& Value);
@@ -81,8 +94,9 @@ private:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-	/** Called for looking input */
 	void OnClimbActionStarted(const FInputActionValue& Value);
+
+	void OnClimbHopActionStarted(const FInputActionValue& Value);
 #pragma endregion
 
 protected:
