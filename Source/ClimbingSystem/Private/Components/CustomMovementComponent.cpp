@@ -6,6 +6,7 @@
 #include "ClimbingSystem/ClimbingSystemCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "MotionWarpingComponent.h"
 
 #include "ClimbingSystem/DebugHelper.h"
 
@@ -21,6 +22,8 @@ void UCustomMovementComponent::BeginPlay()
 		OwningPlayerAnimInstance->OnMontageEnded.AddDynamic(this, &UCustomMovementComponent::OnClimbMontageEnded);
 		OwningPlayerAnimInstance->OnMontageBlendingOut.AddDynamic(this, &UCustomMovementComponent::OnClimbMontageEnded);
 	}
+
+	OwningPlayerCharacter = Cast<AClimbingSystemCharacter>(CharacterOwner);
 }
 
 void UCustomMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -34,6 +37,8 @@ void UCustomMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovem
 	{
 		bOrientRotationToMovement = false;
 		CharacterOwner->GetCapsuleComponent()->SetCapsuleHalfHeight(48.f);
+
+		OnEnterClimbStateDelegate.ExecuteIfBound();
 	}
 
 	if (PreviousMovementMode == MOVE_Custom && PreviousCustomMode == ECustomMovementMode::MOVE_Climb)
@@ -46,6 +51,8 @@ void UCustomMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovem
 		UpdatedComponent->SetRelativeRotation(CleanStandRotation);
 
 		StopMovementImmediately();
+
+		OnExitClimbStateDelegate.ExecuteIfBound();
 	}
 
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
@@ -181,8 +188,13 @@ void UCustomMovementComponent::ToggleClimbing(bool bEnableClimb)
 		{
 			PlayClimbMontage(ClimbingDownLedgeMontage);
 		}
+		else
+		{
+			TryStartVaulting();
+		}
 	}
-	else
+	
+	if (!bEnableClimb)
 	{
 		StopClimbing();
 	}
@@ -396,6 +408,62 @@ bool UCustomMovementComponent::CheckHasReachedLedge()
 	return false;
 }
 
+void UCustomMovementComponent::TryStartVaulting()
+{
+	FVector VaultStartPosition;
+	FVector VaultLandPosition;
+
+	if (CanStartVaulting(VaultStartPosition, VaultLandPosition))
+	{
+		//Start Vaulting
+		SetMotionWarpTarget(FName("VaultStartPoint"), VaultStartPosition);
+		SetMotionWarpTarget(FName("VaultLandPoint"), VaultLandPosition);
+
+		StartClimbing();
+		PlayClimbMontage(ValutMontage);
+	}
+}
+
+bool UCustomMovementComponent::CanStartVaulting(FVector& OutVaultStartPosition, FVector& OutVaultLandPosition)
+{
+	if (IsFalling()) return false;
+
+	OutVaultStartPosition = FVector::ZeroVector;
+	OutVaultLandPosition = FVector::ZeroVector;
+
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+	const FVector ComponentForward = UpdatedComponent->GetForwardVector();
+	const FVector UpVector = UpdatedComponent->GetUpVector();
+	const FVector DownVector = -UpdatedComponent->GetUpVector();
+
+	for (int32 i = 0; i < 5; i++)
+	{
+		const FVector Start = ComponentLocation + UpVector * 100.f + ComponentForward * 100.f * (i + 1);
+		const FVector End = Start + DownVector * 100.f * (i + 1); 
+
+		FHitResult VaultTraceHit = DoLineTraceSingleByObject(Start, End);
+
+		if (i == 0 && VaultTraceHit.bBlockingHit)
+		{
+			OutVaultStartPosition = VaultTraceHit.ImpactPoint;
+		}
+
+		if (i == 3 && VaultTraceHit.bBlockingHit)
+		{
+			OutVaultLandPosition = VaultTraceHit.ImpactPoint;
+		}
+	}
+
+	if (OutVaultStartPosition != FVector::ZeroVector && OutVaultLandPosition != FVector::ZeroVector)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 void UCustomMovementComponent::PlayClimbMontage(UAnimMontage* MontageToPlay)
 {
 	if (!MontageToPlay) return;
@@ -413,12 +481,22 @@ void UCustomMovementComponent::OnClimbMontageEnded(UAnimMontage* Montage, bool b
 		StopMovementImmediately();
 	}
 
-	if (Montage == ClimbingToTopMontage)
+	if (Montage == ClimbingToTopMontage || Montage == ValutMontage)
 	{
 		SetMovementMode(MOVE_Walking);
 	}
 }
 
+void UCustomMovementComponent::SetMotionWarpTarget(const FName& InWarpTargetName, const FVector& InTargetPosition)
+{
+	if (!OwningPlayerCharacter) return;
+
+	OwningPlayerCharacter->GetMotionWarpingComponent()->
+		AddOrUpdateWarpTargetFromLocation(
+			InWarpTargetName,
+			InTargetPosition
+		);
+}
 #pragma endregion
 
 bool UCustomMovementComponent::IsClimbing() const
