@@ -610,7 +610,7 @@ void UCustomMovementComponent::HandleHopRight()
 
 bool UCustomMovementComponent::CheckCanHopRight(FVector& OutHopRightTargetPosition)
 {
-	FHitResult HopRightHit = TraceFromHorizontal(100.f, 80.f);
+	FHitResult HopRightHit = TraceFromRight(100.f, 110.f);
 
 	if (HopRightHit.bBlockingHit)
 	{
@@ -634,7 +634,7 @@ void UCustomMovementComponent::HandleHopLeft()
 
 bool UCustomMovementComponent::CheckCanHopLeft(FVector& OutHopLeftTargetPosition)
 {
-	FHitResult HopLeftHit = TraceFromHorizontal(100.f, -300.f, true, true);
+	FHitResult HopLeftHit = TraceFromLeft(100.f, 110.f);
 
 	if (HopLeftHit.bBlockingHit)
 	{
@@ -662,7 +662,7 @@ bool UCustomMovementComponent::TraceClimbableSurfaces()
 	const FVector StartOffset = UpdatedComponent->GetForwardVector() * 30.f;
 	const FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset;
 	const FVector End = Start + UpdatedComponent->GetForwardVector();
-	ClimbableSurfacesTracedResults = DoCapsuleTraceMultiByObject(Start, End, true);
+	ClimbableSurfacesTracedResults = DoCapsuleTraceMultiByObject(Start, End);
 
 	return !ClimbableSurfacesTracedResults.IsEmpty();
 }
@@ -678,10 +678,21 @@ FHitResult UCustomMovementComponent::TraceFromEyeHeight(float TraceDistance, flo
 	return DoLineTraceSingleByObject(Start, End, bShowDebugShape, bDrawPersistantShape);
 }
 
-FHitResult UCustomMovementComponent::TraceFromHorizontal(float TraceDistance, float TraceStartOffset, bool bShowDebugShape, bool bDrawPersistantShape)
+FHitResult UCustomMovementComponent::TraceFromRight(float TraceDistance, float TraceStartOffset, bool bShowDebugShape, bool bDrawPersistantShape)
 {
 	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
-	const FVector HorizontalOffset = UpdatedComponent->GetRightVector() * (CharacterOwner->BaseEyeHeight + TraceStartOffset);
+	const FVector HorizontalOffset = UpdatedComponent->GetRightVector() * TraceStartOffset;
+
+	const FVector Start = ComponentLocation + HorizontalOffset;
+	const FVector End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;
+
+	return DoLineTraceSingleByObject(Start, End, bShowDebugShape, bDrawPersistantShape);
+}
+
+FHitResult UCustomMovementComponent::TraceFromLeft(float TraceDistance, float TraceStartOffset, bool bShowDebugShape, bool bDrawPersistantShape)
+{
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+	const FVector HorizontalOffset = -UpdatedComponent->GetRightVector() * TraceStartOffset;
 
 	const FVector Start = ComponentLocation + HorizontalOffset;
 	const FVector End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;

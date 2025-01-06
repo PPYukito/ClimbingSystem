@@ -64,7 +64,8 @@ private:
 	bool TraceClimbableSurfaces();
 
 	FHitResult TraceFromEyeHeight(float TraceDistance, float TraceStartOffset = 0.f, bool bShowDebugShape = false, bool bDrawPersistantShape = false);
-	FHitResult TraceFromHorizontal(float TraceDistance, float TraceStartOffset = 0.f, bool bShowDebugShape = false, bool bDrawPersistantShape = false);
+	FHitResult TraceFromRight(float TraceDistance, float TraceStartOffset = 0.f, bool bShowDebugShape = false, bool bDrawPersistantShape = false);
+	FHitResult TraceFromLeft(float TraceDistance, float TraceStartOffset = 0.f, bool bShowDebugShape = false, bool bDrawPersistantShape = false);
 
 	bool CanStartClimbing();
 
