@@ -397,7 +397,7 @@ bool UCustomMovementComponent::CheckHasReachedLedge()
 		const FVector DownVector = -UpdatedComponent->GetUpVector();
 		const FVector WalkableSurfaceTraceEnd = WalkableSurfaceTraceStart + DownVector * 100.f;
 
-		FHitResult WalkableSurfaceHitResult = DoLineTraceSingleByObject(WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd, true);
+		FHitResult WalkableSurfaceHitResult = DoLineTraceSingleByObject(WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd);
 
 		if (WalkableSurfaceHitResult.bBlockingHit && GetUnrotatedClimbVelocity().Z > 10.f)
 		{
@@ -586,7 +586,7 @@ void UCustomMovementComponent::HandleHopDown()
 
 bool UCustomMovementComponent::CheckCanHopDown(FVector& OutHopDownTargetPosition)
 {
-	FHitResult HopDownHit = TraceFromEyeHeight(100.f, -300.f, true, true);
+	FHitResult HopDownHit = TraceFromEyeHeight(100.f, -300.f);
 
 	if (HopDownHit.bBlockingHit)
 	{
